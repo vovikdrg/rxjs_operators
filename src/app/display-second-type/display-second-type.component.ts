@@ -13,7 +13,6 @@ export class DisplaySecondTypeComponent implements OnInit {
       .events
       .filter(e => e.type == 'Second')
       .subscribe(e => {
-        console.log(e)
         this.events.push(e);
         this._eventService.allowType.next("Second");
       });

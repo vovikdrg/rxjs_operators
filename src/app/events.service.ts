@@ -8,15 +8,21 @@ export class EventsService {
   public PushEvents = new Subject<EventFlow>();
   private _eventFlowStopper = new BehaviorSubject<boolean>(false);
   private _allowType = new BehaviorSubject<string>("");
-  //private _eventsObservable: Observable<EventFlow>
-  private _eventsObservable: Subject<EventFlow> = new Subject<EventFlow>();
+
+  private _eventsObservable: Observable<EventFlow>
 
   constructor() {
-    this.PushEvents
-      .controlledEventFlow(this._eventFlowStopper, this._allowType)      
-      .subscribe(ev=>this._eventsObservable.next(ev));
+    this._eventsObservable = this.PushEvents
+      .controlledEventFlow(this._eventFlowStopper, this._allowType);     
   }
-
+  
+/*  private _eventsObservable: Subject<EventFlow> = new Subject<EventFlow>();
+  constructor() {
+    this.PushEvents
+      .controlledEventFlow(this._eventFlowStopper, this._allowType)     
+      .subscribe(ev=> this._eventsObservable.next(ev) );
+  }
+*/
 
   public get events(): Observable<EventFlow> {
     return this._eventsObservable;

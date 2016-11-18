@@ -2,12 +2,21 @@ import { EventFlow } from './events.service';
 import { Observable } from 'rxjs/Observable';
 import { Subscriber, Operator } from 'rxjs';
 
-export function controlledEventFlow(this: Observable<EventFlow>, stopNotifier: Observable<boolean>, allowTypeOnly: Observable<string>): Observable<EventFlow> {
+function controlledEventFlow(this: Observable<EventFlow>, stopNotifier: Observable<boolean>, allowTypeOnly: Observable<string>): Observable<EventFlow> {
     return this.lift(new EventFlowOperator(stopNotifier, allowTypeOnly));
 }
 
-class EventFlowOperator implements Operator<EventFlow, EventFlow> {
+declare module 'rxjs/Observable' {
+    interface Observable<T> {
+        controlledEventFlow: typeof controlledEventFlow;
+    }
+}
 
+Observable.prototype.controlledEventFlow = controlledEventFlow;
+
+
+
+class EventFlowOperator implements Operator<EventFlow, EventFlow> {
     constructor(private stopNotifier: Observable<boolean>, private allowTypeOnly: Observable<string>) {
     }
 
@@ -23,14 +32,19 @@ class EventFlowSubscriber extends Subscriber<EventFlow> {
 
     constructor(destination: Subscriber<EventFlow>, stopNotifier: Observable<boolean>, allowTypeOnly: Observable<string>) {
         super(destination);
-        stopNotifier.subscribe((v) => {
-            this.flowStopper = v;
-            this.deliverNext();
-        });
-        allowTypeOnly.subscribe((v) => {
-            this.allowType = v
-            this.deliverNext();
-        });
+        var pred = (<any>this.destination).predicate ? (<any>this.destination).predicate.toString() : "No predicate";
+        stopNotifier
+            .subscribe((v) => {
+                console.log("flowStopper", pred, v);
+                this.flowStopper = v;
+                this.deliverNext();
+            });
+        allowTypeOnly
+            .subscribe((v) => {
+                console.log("allowType", (<any>this.destination).predicate, v);
+                this.allowType = v
+                this.deliverNext();
+            });
     }
 
     protected _next(value: EventFlow) {
@@ -39,11 +53,11 @@ class EventFlowSubscriber extends Subscriber<EventFlow> {
     }
 
     private deliverNext() {
-        console.log("deliverNext", this.flowStopper);
+
         if (this.buffer.length == 0) {
             return;
         }
-     
+
         if (this.allowType) {
             var toEmit = this.buffer.filter(el => {
                 return el.type === this.allowType;
@@ -57,14 +71,9 @@ class EventFlowSubscriber extends Subscriber<EventFlow> {
         if (this.flowStopper) {
             return;
         }
-        this.destination.next(this.buffer.shift());
+        var ev = this.buffer.shift();
+        console.log("deliverNext => ", ev.type, "=>", (<any>this.destination).predicate, "buffer[", this.buffer.length, "]");
+        this.destination.next(ev);
     }
 }
 
-Observable.prototype.controlledEventFlow = controlledEventFlow;
-
-declare module 'rxjs/Observable' {
-    interface Observable<T> {
-        controlledEventFlow: typeof controlledEventFlow;
-    }
-}
